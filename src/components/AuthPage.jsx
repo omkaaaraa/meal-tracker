@@ -75,9 +75,23 @@ const AuthPage = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create user profile in Firestore
+      // Create user profile in Firestore with default goals
       await createUserProfile(user.uid, {
-        email: user.email
+        email: user.email,
+        displayName: '',
+        goals: {
+          calories: 2000,
+          protein: 100,
+          carbs: 250,
+          fats: 70
+        },
+        personalInfo: {
+          age: '',
+          weight: '',
+          height: '',
+          activityLevel: 'moderate',
+          goal: 'maintain'
+        }
       });
 
       console.log('User signed up successfully:', user);

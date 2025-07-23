@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
-import { getTodaysMeals, addMeal, deleteMeal, updateMeal } from '../services/firestore';
+import { getTodaysMeals, addMeal, deleteMeal, updateMeal, getUserProfile } from '../services/firestore';
 import { analyzeNutrition } from '../services/aiService';
 
 const Dashboard = ({ user }) => {
+  const navigate = useNavigate();
   const [meals, setMeals] = useState([]);
+  // ...existing code...
   const [loading, setLoading] = useState(true);
   const [showMealForm, setShowMealForm] = useState(false);
   const [mealDescription, setMealDescription] = useState('');
@@ -16,6 +19,12 @@ const Dashboard = ({ user }) => {
   const [updatingMeal, setUpdatingMeal] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [userGoals, setUserGoals] = useState({
+    calories: 2000,
+    protein: 100,
+    carbs: 250,
+    fats: 70
+  });
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -34,6 +43,12 @@ const Dashboard = ({ user }) => {
       const todaysMeals = await getTodaysMeals(user.uid);
       console.log('Loaded meals:', todaysMeals); // Debug log
       setMeals(todaysMeals);
+      
+      // Load user profile and goals
+      const userProfile = await getUserProfile(user.uid);
+      if (userProfile && userProfile.goals) {
+        setUserGoals(userProfile.goals);
+      }
     } catch (error) {
       console.error('Error loading meals:', error);
       setError('Failed to load meals');
@@ -193,14 +208,22 @@ const Dashboard = ({ user }) => {
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">AI Meal Tracker</h1>
-              <p className="text-gray-600">Welcome back, {user.email}!</p>
+              <p className="text-gray-600">Welcome back, {user.displayName || user.email}!</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Logout
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => navigate('/settings')}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                ⚙️ Settings
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -310,10 +333,10 @@ const Dashboard = ({ user }) => {
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div 
                   className="bg-blue-600 h-2 rounded-full" 
-                  style={{width: `${Math.min((dayTotals.calories / 2000) * 100, 100)}%`}}
+                  style={{width: `${Math.min((dayTotals.calories / userGoals.calories) * 100, 100)}%`}}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Goal: 2000</p>
+              <p className="text-xs text-gray-500 mt-1">Goal: {userGoals.calories}</p>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <p className="text-2xl font-bold text-green-600">{Math.round(dayTotals.protein)}g</p>
@@ -321,10 +344,10 @@ const Dashboard = ({ user }) => {
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div 
                   className="bg-green-600 h-2 rounded-full" 
-                  style={{width: `${Math.min((dayTotals.protein / 100) * 100, 100)}%`}}
+                  style={{width: `${Math.min((dayTotals.protein / userGoals.protein) * 100, 100)}%`}}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Goal: 100g</p>
+              <p className="text-xs text-gray-500 mt-1">Goal: {userGoals.protein}g</p>
             </div>
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
               <p className="text-2xl font-bold text-yellow-600">{Math.round(dayTotals.carbs)}g</p>
@@ -332,10 +355,10 @@ const Dashboard = ({ user }) => {
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div 
                   className="bg-yellow-600 h-2 rounded-full" 
-                  style={{width: `${Math.min((dayTotals.carbs / 250) * 100, 100)}%`}}
+                  style={{width: `${Math.min((dayTotals.carbs / userGoals.carbs) * 100, 100)}%`}}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Goal: 250g</p>
+              <p className="text-xs text-gray-500 mt-1">Goal: {userGoals.carbs}g</p>
             </div>
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <p className="text-2xl font-bold text-red-600">{Math.round(dayTotals.fats)}g</p>
@@ -343,10 +366,10 @@ const Dashboard = ({ user }) => {
               <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                 <div 
                   className="bg-red-600 h-2 rounded-full" 
-                  style={{width: `${Math.min((dayTotals.fats / 70) * 100, 100)}%`}}
+                  style={{width: `${Math.min((dayTotals.fats / userGoals.fats) * 100, 100)}%`}}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Goal: 70g</p>
+              <p className="text-xs text-gray-500 mt-1">Goal: {userGoals.fats}g</p>
             </div>
           </div>
         </div>

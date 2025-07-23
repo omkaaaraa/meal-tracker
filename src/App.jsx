@@ -2,16 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
+import { createUserProfile } from './services/firestore';
 import AuthPage from './components/AuthPage';
 import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      // Ensure user profile exists for existing users
+      if (currentUser) {
+        try {
+          await createUserProfile(currentUser.uid, {
+            email: currentUser.email,
+            displayName: currentUser.displayName || '',
+            goals: {
+              calories: 2000,
+              protein: 100,
+              carbs: 250,
+              fats: 70
+            },
+            personalInfo: {
+              age: '',
+              weight: '',
+              height: '',
+              activityLevel: 'moderate',
+              goal: 'maintain'
+            }
+          });
+        } catch (error) {
+          console.log('User profile already exists or error creating:', error);
+        }
+      }
+      
       setLoading(false);
     });
 
@@ -41,6 +69,10 @@ function App() {
           <Route
             path="/dashboard"
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/settings"
+            element={user ? <Settings user={user} /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/"

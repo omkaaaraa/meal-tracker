@@ -6,13 +6,14 @@ import {
   getDocs, 
   deleteDoc,
   updateDoc,
+  getDoc,
   query, 
   orderBy, 
   where 
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// Create user profile document in Firestore
+// Create user profile document in Firestore (with merge to avoid overwriting)
 export const createUserProfile = async (userId, userData) => {
   try {
     const userRef = doc(db, 'users', userId);
@@ -20,8 +21,8 @@ export const createUserProfile = async (userId, userData) => {
       email: userData.email,
       createdAt: new Date().toISOString(),
       ...userData
-    });
-    console.log('User profile created successfully');
+    }, { merge: true }); // Merge option prevents overwriting existing data
+    console.log('User profile created/updated successfully');
   } catch (error) {
     console.error('Error creating user profile:', error);
     throw error;
@@ -137,6 +138,54 @@ export const deleteMeal = async (userId, mealId) => {
     console.log('Meal deleted successfully');
   } catch (error) {
     console.error('Error deleting meal:', error);
+    throw error;
+  }
+};
+
+// Get user profile document
+export const getUserProfile = async (userId) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      return userSnap.data();
+    } else {
+      console.log('No user profile found');
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
+};
+
+// Update user profile document (creates if doesn't exist)
+export const updateUserProfile = async (userId, updateData) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    
+    // Check if document exists first
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      // Document exists, update it
+      await updateDoc(userRef, {
+        ...updateData,
+        updatedAt: new Date().toISOString()
+      });
+      console.log('User profile updated successfully');
+    } else {
+      // Document doesn't exist, create it
+      await setDoc(userRef, {
+        ...updateData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      console.log('User profile created successfully');
+    }
+  } catch (error) {
+    console.error('Error updating user profile:', error);
     throw error;
   }
 };
